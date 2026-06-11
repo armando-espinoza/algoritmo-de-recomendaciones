@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recomendador de Libros</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --surface:   #1a1d27;
+      --border:    #2a2d3a;
+      --accent:    #7c6af7;
+      --accent-lt: #a79bfa;
+      --text:      #e8e6f0;
+      --muted:     #7a7a9a;
+      --tag-bg:    #252840;
+      --radius:    10px;
+      --font-body: 'Inter', system-ui, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    header svg { flex-shrink: 0; }
+    header h1  { font-size: 1.15rem; font-weight: 600; letter-spacing: .01em; }
+    header span {
+      margin-left: auto;
+      font-size: .75rem;
+      color: var(--muted);
+      font-family: var(--font-mono);
+    }
+    #lang-badge {
+      background: var(--tag-bg);
+      color: var(--accent-lt);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: .2rem .65rem;
+      font-size: .7rem;
+      font-family: var(--font-mono);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    /* ── Layout ── */
+    main {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 0;
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      border-right: 1px solid var(--border);
+      padding: 1.25rem 1rem;
+      overflow-y: auto;
+    }
+    aside h2 {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: .85rem;
+      padding: 0 .4rem;
+    }
+    #libro-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+    #libro-list li {
+      padding: .55rem .75rem;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: .85rem;
+      color: var(--muted);
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #libro-list li:hover  { background: var(--tag-bg); color: var(--text); }
+    #libro-list li.active { background: var(--accent); color: #fff; }
+    #sidebar-empty {
+      font-size: .82rem;
+      color: var(--muted);
+      padding: .5rem .75rem;
+    }
+
+    /* ── Content panel ── */
+    section {
+      padding: 2rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    .placeholder {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: .75rem;
+      color: var(--muted);
+      font-size: .9rem;
+    }
+    .placeholder svg { opacity: .25; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.5rem;
+    }
+    .card-title {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    /* ── Libro heading ── */
+    #libro-heading {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+    }
+    #libro-heading h2 { font-size: 1.35rem; font-weight: 700; }
+
+    /* ── Controls strip ── */
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      flex-wrap: wrap;
+    }
+    label { font-size: .8rem; color: var(--muted); }
+    input[type=range] {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .val-badge {
+      font-family: var(--font-mono);
+      font-size: .78rem;
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: .15rem .5rem;
+      min-width: 2rem;
+      text-align: center;
+    }
+    button.fetch-btn {
+      margin-left: auto;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 7px;
+      padding: .45rem 1rem;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    button.fetch-btn:hover { opacity: .85; }
+    button.fetch-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Tags (resumen) ── */
+    #tags-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .45rem;
+    }
+    .tag {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: .25rem .75rem;
+      font-size: .78rem;
+      font-family: var(--font-mono);
+      color: var(--accent-lt);
+    }
+
+    /* ── Recomendaciones ── */
+    #recs-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+      gap: .65rem;
+      list-style: none;
+    }
+    #recs-list li {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: .75rem 1rem;
+      font-size: .82rem;
+      cursor: pointer;
+      transition: border-color .15s;
+    }
+    #recs-list li:hover { border-color: var(--accent); }
+    #recs-list li .rec-num {
+      font-family: var(--font-mono);
+      font-size: .68rem;
+      color: var(--muted);
+      margin-bottom: .3rem;
+    }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      display: none;
+    }
+    .spinner.active { display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: .65rem 2rem;
+      font-size: .72rem;
+      color: var(--muted);
+      display: flex;
+      gap: 1.5rem;
+    }
+    footer a { color: var(--accent-lt); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 680px) {
+      main { grid-template-columns: 1fr; }
+      aside { border-right: none; border-bottom: 1px solid var(--border); max-height: 220px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+  </svg>
+  <h1>Recomendador de Libros</h1>
+  <span id="lang-badge">—</span>
+</header>
+
+<main>
+  <aside>
+    <h2>Biblioteca</h2>
+    <ul id="libro-list">
+      <li id="sidebar-empty">Cargando…</li>
+    </ul>
+  </aside>
+
+  <section id="panel">
+    <div class="placeholder" id="placeholder">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      <p>Selecciona un libro de la lista</p>
+    </div>
+
+    <div id="libro-content" style="display:none; display:flex; flex-direction:column; gap:1.5rem;">
+
+      <div id="libro-heading">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        <h2 id="libro-nombre">—</h2>
+      </div>
+
+      <!-- Resumen -->
+      <div class="card">
+        <div class="card-title">Palabras clave (TF-IDF)</div>
+        <div class="controls" style="margin-bottom:.85rem;">
+          <label>Palabras</label>
+          <input type="range" id="num-palabras" min="5" max="40" value="15" />
+          <span class="val-badge" id="num-palabras-val">15</span>
+          <div class="spinner" id="spin-res"></div>
+          <button class="fetch-btn" id="btn-resumen">Calcular</button>
+        </div>
+        <div id="tags-wrap"><span style="color:var(--muted);font-size:.82rem;">Pulsa "Calcular" para ver las palabras.</span></div>
+      </div>
+
+      <!-- Recomendaciones -->
+      <div class="card">
+        <div class="card-title">Libros similares</div>
+        <div class="controls" style="margin-bottom:.85rem;">
+          <label>Resultados</label>
+          <input type="range" id="num-recs" min="1" max="10" value="5" />
+          <span class="val-badge" id="num-recs-val">5</span>
+          <div class="spinner" id="spin-rec"></div>
+          <button class="fetch-btn" id="btn-recs">Buscar</button>
+        </div>
+        <ul id="recs-list"><li style="color:var(--muted);font-size:.82rem;background:none;border:none;">Pulsa "Buscar" para ver recomendaciones.</li></ul>
+      </div>
+
+    </div>
+  </section>
+</main>
+
+<footer>
+  <span>API: <a href="/docs" target="_blank">/docs</a></span>
+  <span>Endpoints: <code>/api/libros</code> · <code>/api/resumen</code> · <code>/api/recomendaciones</code></span>
+</footer>
+
+<script>
+  const BASE = '';
+  let libros = [];
+  let selectedIdx = null;
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  async function api(method, path, body) {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(BASE + path, opts);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  }
+
+  function spin(id, on) {
+    document.getElementById(id).classList.toggle('active', on);
+  }
+
+  // ── Startup ───────────────────────────────────────────────────────────────
+  async function init() {
+    // Idioma activo
+    try {
+      const { activo } = await api('GET', '/api/idiomas');
+      document.getElementById('lang-badge').textContent = activo;
+    } catch (_) {}
+
+    // Libros
+    try {
+      libros = await api('GET', '/api/libros');
+    } catch (e) {
+      document.getElementById('sidebar-empty').textContent = 'Error al cargar libros.';
+      return;
+    }
+
+    const ul = document.getElementById('libro-list');
+    ul.innerHTML = '';
+    if (!libros.length) {
+      ul.innerHTML = '<li id="sidebar-empty">Sin libros disponibles.</li>';
+      return;
+    }
+
+    libros.forEach(({ index, name }) => {
+      const li = document.createElement('li');
+      li.textContent = name;
+      li.title = name;
+      li.dataset.idx = index;
+      li.addEventListener('click', () => selectLibro(index, li));
+      ul.appendChild(li);
+    });
+  }
+
+  // ── Selección de libro ────────────────────────────────────────────────────
+  function selectLibro(idx, liEl) {
+    selectedIdx = idx;
+
+    // Sidebar highlight
+    document.querySelectorAll('#libro-list li').forEach(l => l.classList.remove('active'));
+    liEl.classList.add('active');
+
+    // Panel
+    document.getElementById('placeholder').style.display = 'none';
+    const content = document.getElementById('libro-content');
+    content.style.display = 'flex';
+
+    const libro = libros.find(l => l.index === idx);
+    document.getElementById('libro-nombre').textContent = libro?.name ?? '—';
+
+    // Limpiar resultados anteriores
+    document.getElementById('tags-wrap').innerHTML =
+      '<span style="color:var(--muted);font-size:.82rem;">Pulsa "Calcular" para ver las palabras.</span>';
+    document.getElementById('recs-list').innerHTML =
+      '<li style="color:var(--muted);font-size:.82rem;background:none;border:none;">Pulsa "Buscar" para ver recomendaciones.</li>';
+  }
+
+  // ── Resumen ───────────────────────────────────────────────────────────────
+  document.getElementById('num-palabras').addEventListener('input', e => {
+    document.getElementById('num-palabras-val').textContent = e.target.value;
+  });
+
+  document.getElementById('btn-resumen').addEventListener('click', async () => {
+    if (selectedIdx === null) return;
+    const n = Number(document.getElementById('num-palabras').value);
+    spin('spin-res', true);
+    document.getElementById('btn-resumen').disabled = true;
+    try {
+      const { palabras } = await api('POST', '/api/resumen', { idx: selectedIdx, num_palabras: n });
+      const wrap = document.getElementById('tags-wrap');
+      wrap.innerHTML = '';
+      palabras.forEach(p => {
+        const span = document.createElement('span');
+        span.className = 'tag';
+        span.textContent = p;
+        wrap.appendChild(span);
+      });
+    } catch (e) {
+      document.getElementById('tags-wrap').textContent = 'Error al obtener resumen.';
+    } finally {
+      spin('spin-res', false);
+      document.getElementById('btn-resumen').disabled = false;
+    }
+  });
+
+  // ── Recomendaciones ───────────────────────────────────────────────────────
+  document.getElementById('num-recs').addEventListener('input', e => {
+    document.getElementById('num-recs-val').textContent = e.target.value;
+  });
+
+  document.getElementById('btn-recs').addEventListener('click', async () => {
+    if (selectedIdx === null) return;
+    const n = Number(document.getElementById('num-recs').value);
+    spin('spin-rec', true);
+    document.getElementById('btn-recs').disabled = true;
+    try {
+      const { recomendaciones } = await api('POST', '/api/recomendaciones', { idx: selectedIdx, num_libros: n });
+      const ul = document.getElementById('recs-list');
+      ul.innerHTML = '';
+      recomendaciones.forEach(({ index, name }, pos) => {
+        const li = document.createElement('li');
+        li.innerHTML = `<div class="rec-num">#${pos + 1}</div>${name}`;
+        li.title = `Ir a: ${name}`;
+        li.addEventListener('click', () => {
+          const liEl = document.querySelector(`#libro-list li[data-idx="${index}"]`);
+          if (liEl) selectLibro(index, liEl);
+        });
+        ul.appendChild(li);
+      });
+    } catch (e) {
+      document.getElementById('recs-list').textContent = 'Error al obtener recomendaciones.';
+    } finally {
+      spin('spin-rec', false);
+      document.getElementById('btn-recs').disabled = false;
+    }
+  });
+
+  init();
+</script>
+</body>
+</html>
