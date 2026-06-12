@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from libro import LibroEnglish, LibroSpanish, LibroFrench, crear_lista_libros_ingles
 from recomendador import Recomendador
 
-BOOKS_DIR = os.getenv("BOOKS_DIR", "BookTest2")
+BOOKS_DIR = os.getenv("BOOKS_DIR", "Libros")
 BOOKS_LANG = os.getenv("BOOKS_LANG", "english")
 
 app = FastAPI(title="Recomendador de Libros")
