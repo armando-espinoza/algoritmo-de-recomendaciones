@@ -3,11 +3,28 @@ from pathlib import Path
 from string import punctuation
 import nltk
 from nltk.corpus import stopwords as nltk_stopwords
-
 nltk.download('stopwords', quiet=True)
 
 
 class Libro:
+    """
+    Representa un libro de texto y permite preprocesar su contenido.
+
+    Parameters
+    ----------
+    name : str
+        Nombre del libro.
+    filename : str
+        Ruta al archivo de texto.
+
+    Attributes
+    ----------
+    CARACTERES_ESPECIALES : str or None
+        Caracteres que se eliminan durante la limpieza. Por defecto None.
+    STOPWORDS : list of str or None
+        Palabras vacías que se eliminan durante la tokenización. Por defecto None.
+    """
+
     def __init__(self, name, filename) -> None:
         self.name = name
         self.filename = filename
@@ -16,6 +33,7 @@ class Libro:
 
     @property
     def name(self):
+        """str: Nombre del libro."""
         return self._name
 
     @name.setter
@@ -26,6 +44,7 @@ class Libro:
 
     @property
     def filename(self):
+        """str: Ruta al archivo de texto."""
         return self._filename
 
     @filename.setter
@@ -37,12 +56,39 @@ class Libro:
         self._filename = value
 
     def _limpiar_linea(self, linea):
+        """
+        Elimina los caracteres especiales de una línea.
+
+        Parameters
+        ----------
+        linea : str
+            Línea de texto a limpiar.
+
+        Returns
+        -------
+        str
+            Línea sin los caracteres especiales, o la línea original si
+            ``CARACTERES_ESPECIALES`` es None.
+        """
         if not self.CARACTERES_ESPECIALES:
             return linea
         caracteres_limpios = [char for char in linea if char not in self.CARACTERES_ESPECIALES]
         return "".join(caracteres_limpios)
 
     def _limpiar_tokens(self, tokens):
+        """
+        Elimina las stopwords de una lista de tokens.
+
+        Parameters
+        ----------
+        tokens : list of str
+            Lista de tokens a filtrar.
+
+        Returns
+        -------
+        list of str
+            Lista sin las stopwords, o la lista original si ``STOPWORDS`` es None.
+        """
         if not self.STOPWORDS:
             return tokens
         for word in tokens.copy():
@@ -51,6 +97,22 @@ class Libro:
         return tokens
 
     def _preprocesar_linea(self, linea) -> list[str]:
+        """
+        Normaliza y tokeniza una línea de texto.
+
+        Aplica strip, lowercase, limpieza de caracteres especiales y
+        eliminación de stopwords.
+
+        Parameters
+        ----------
+        linea : str
+            Línea de texto cruda.
+
+        Returns
+        -------
+        list of str
+            Tokens limpios de la línea.
+        """
         linea = linea.strip()
         linea = linea.lower()
         linea = self._limpiar_linea(linea)
@@ -59,6 +121,14 @@ class Libro:
         return tokens
 
     def leer_libro(self) -> list[str]:
+        """
+        Lee el archivo y devuelve las líneas no vacías.
+
+        Returns
+        -------
+        list of str
+            Líneas del archivo que contienen texto.
+        """
         lineas = []
         with open(self.filename, encoding='utf-8') as f:
             for linea in f:
@@ -67,6 +137,14 @@ class Libro:
         return lineas
 
     def preprocesar_libro(self) -> dict[str, int]:
+        """
+        Calcula la frecuencia de cada token en el libro.
+
+        Returns
+        -------
+        dict of {str: int}
+            Diccionario con tokens como claves y su frecuencia como valores.
+        """
         frecuencias = {}
         for linea in self.leer_libro():
             tokens = self._preprocesar_linea(linea)
@@ -85,7 +163,23 @@ class Libro:
 
 
 class LibroGutenberg(Libro):
+    """
+    Libro proveniente del Proyecto Gutenberg.
+
+    Extiende ``Libro`` para ignorar el encabezado y pie de página que
+    Project Gutenberg añade a sus archivos, leyendo solo el contenido
+    entre las marcas ``*** START`` y ``*** END``.
+    """
+
     def leer_libro(self) -> list[str]:
+        """
+        Lee solo el contenido del libro, omitiendo el encabezado y pie de Gutenberg.
+
+        Returns
+        -------
+        list of str
+            Líneas no vacías entre las marcas de inicio y fin del texto.
+        """
         lineas = []
         dentro = False
         with open(self.filename, encoding='utf-8') as f:
@@ -101,24 +195,79 @@ class LibroGutenberg(Libro):
 
 
 class LibroEnglish(LibroGutenberg):
+    """
+    Libro de Gutenberg en inglés.
+
+    Carga automáticamente las stopwords en inglés de NLTK.
+
+    Parameters
+    ----------
+    name : str
+        Nombre del libro.
+    filename : str
+        Ruta al archivo de texto.
+    """
+
     def __init__(self, name, filename) -> None:
         super().__init__(name, filename)
         self.STOPWORDS = set(nltk_stopwords.words('english'))
 
 
 class LibroSpanish(LibroGutenberg):
+    """
+    Libro de Gutenberg en español.
+
+    Carga automáticamente las stopwords en español de NLTK.
+
+    Parameters
+    ----------
+    name : str
+        Nombre del libro.
+    filename : str
+        Ruta al archivo de texto.
+    """
+
     def __init__(self, name, filename) -> None:
         super().__init__(name, filename)
         self.STOPWORDS = set(nltk_stopwords.words('spanish'))
 
 
 class LibroFrench(LibroGutenberg):
+    """
+    Libro de Gutenberg en francés.
+
+    Carga automáticamente las stopwords en francés de NLTK.
+
+    Parameters
+    ----------
+    name : str
+        Nombre del libro.
+    filename : str
+        Ruta al archivo de texto.
+    """
+
     def __init__(self, name, filename) -> None:
         super().__init__(name, filename)
         self.STOPWORDS = set(nltk_stopwords.words('french'))
 
 
 def crear_lista_libros_ingles(directory: str, caract_especiales=punctuation):
+    """
+    Crea una lista de ``LibroEnglish`` a partir de los archivos .txt de un directorio.
+
+    Parameters
+    ----------
+    directory : str
+        Ruta al directorio que contiene los archivos .txt.
+    caract_especiales : str, optional
+        Caracteres a eliminar durante el preprocesamiento.
+        Por defecto usa ``string.punctuation``.
+
+    Returns
+    -------
+    list of LibroEnglish
+        Un objeto ``LibroEnglish`` por cada archivo .txt encontrado.
+    """
     libros = []
     path = Path(directory)
     for file in path.glob('*.txt'):

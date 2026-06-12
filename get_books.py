@@ -13,26 +13,24 @@ HEADERS = {
 
 
 def get_links(n: int | list[int] = -1) -> tuple[list[str], list[str]]:
-    """Obtiene los urls y los nombres de los libros del proyecto de Gutenberg
-    deseados.
-    Los libros se encuentran en formato txt bajo la sección descargados
-    frecuentemente en:
-        https://www.gutenberg.org/browse/scores/top.
-    Los números `n` deben corresponder a los números en esta lista (empezando
-    con uno).
+    """
+    Obtiene las URLs y títulos de los libros más descargados de Project Gutenberg.
+
+    Consulta la página ``https://www.gutenberg.org/browse/scores/top`` y extrae
+    los enlaces a los archivos .txt de los libros seleccionados.
 
     Parameters
     ----------
-    n : int | list[int], optional
-        Un entero o lista de enteros con los números de libros deseados.
-        Escoge -1 (default) si se desean todos los libros.
+    n : int or list of int, optional
+        Número o lista de números (1-based) de los libros a obtener.
+        Usa -1 (por defecto) para obtener todos.
 
     Returns
     -------
-    links : list[str]
-        Ligas a los archivos txt de los libros.
-    titles : list[str]
-        Títulos de los libros (usados como nombre de archivo .txt).
+    links : list of str
+        URLs directas a los archivos .txt en UTF-8.
+    titles : list of str
+        Nombres de archivo seguros derivados del título de cada libro.
     """
     url = "https://www.gutenberg.org/browse/scores/top"
     try:
@@ -90,10 +88,22 @@ def get_links(n: int | list[int] = -1) -> tuple[list[str], list[str]]:
 
 
 def download_file(url: str, name: str, directory: str) -> bool:
-    """Guarda un archivo que se encuentra en un `url` bajo el nombre que demos
-    en `name` en el directorio deseado.
+    """
+    Descarga un archivo desde una URL y lo guarda en el directorio indicado.
 
-    Returns True si la descarga fue exitosa, False en caso contrario.
+    Parameters
+    ----------
+    url : str
+        URL del archivo a descargar.
+    name : str
+        Nombre con el que se guardará el archivo.
+    directory : str
+        Ruta del directorio donde se guardará el archivo.
+
+    Returns
+    -------
+    bool
+        True si la descarga fue exitosa, False en caso contrario.
     """
     try:
         response = requests.get(url, headers=HEADERS, stream=True, timeout=30)
@@ -113,8 +123,20 @@ def download_file(url: str, name: str, directory: str) -> bool:
 
 
 def store_files(links: list[str], names: list[str], directory: str = './') -> None:
-    """Guarda cada liga de la lista de ligas `links` en la computadora
-    utilizando el directorio deseado y cada uno de los nombres en names.
+    """
+    Descarga y guarda una lista de archivos en el directorio indicado.
+
+    Crea el directorio si no existe y llama a ``download_file`` por cada par
+    URL-nombre.
+
+    Parameters
+    ----------
+    links : list of str
+        URLs de los archivos a descargar.
+    names : list of str
+        Nombres con los que se guardará cada archivo.
+    directory : str, optional
+        Ruta del directorio destino. Por defecto ``'./'``.
     """
     Path(directory).mkdir(parents=True, exist_ok=True)
     for url, name in zip(links, names):
@@ -122,6 +144,17 @@ def store_files(links: list[str], names: list[str], directory: str = './') -> No
 
 
 def main(n=-1, directory='./'):
+    """
+    Punto de entrada principal: obtiene y descarga los libros seleccionados.
+
+    Parameters
+    ----------
+    n : int or list of int, optional
+        Número o lista de números (1-based) de los libros a descargar.
+        Usa -1 (por defecto) para descargar todos.
+    directory : str, optional
+        Directorio donde se guardarán los archivos. Por defecto ``'./'``.
+    """
     print(" Obteniendo lista de libros de Project Gutenberg…")
     links, titles = get_links(n)
 
